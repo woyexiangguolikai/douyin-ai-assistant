@@ -16,3 +16,7 @@ test-playwright.js
 fix-cb.js
 fix-app-tsx.js
 install-electron.js
+
+# Local database
+/data/
+*.db

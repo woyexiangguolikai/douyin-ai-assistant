@@ -46,7 +46,17 @@ function startHeartbeat() {
 }
 
 function createWindow() {
-  if (!mainWindow) return
+  mainWindow = new BrowserWindow({
+    width: 1200, height: 800, minWidth: 900, minHeight: 600,
+    title: '抖音AI直播助手',
+    backgroundColor: '#0f1117',
+    frame: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  })
   mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   mainWindow.on('closed', () => { mainWindow = null })
 }

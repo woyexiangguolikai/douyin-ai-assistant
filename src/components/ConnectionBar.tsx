@@ -60,18 +60,11 @@ export default function ConnectionBar({ status, roomId, captureMethod, onConnect
               {captureMethod === 'websocket' ? <Wifi size={10} /> : <Globe size={10} />}
               {captureMethod}
             </span>
-            <div className="ml-auto flex items-center gap-2">
-              <button onClick={() => onSwitchMethod(captureMethod === 'websocket' ? 'playwright' : 'websocket')}
-                className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider rounded-pill transition-all"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}>
-                切换方案
-              </button>
               <button onClick={onDisconnect}
                 className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-pill transition-all"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)' }}>
                 断开
               </button>
-            </div>
           </>
         )}
       </div>

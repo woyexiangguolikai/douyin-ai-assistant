@@ -11,6 +11,32 @@ export function LiveFeed({ danmaku, completedHistory, streamingReply }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const autoScrollRef = useRef(true)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [typingText, setTypingText] = useState('')
+  const typingTimerRef = useRef<any>(null)
+  const typingIdxRef = useRef(0)
+
+  // Typing animation effect
+  useEffect(() => {
+    if (!streamingReply) {
+      setTypingText('')
+      typingIdxRef.current = 0
+      return
+    }
+    const fullText = streamingReply.text
+    const typeStep = () => {
+      if (typingIdxRef.current < fullText.length) {
+        typingIdxRef.current += 2
+        setTypingText(fullText.substring(0, typingIdxRef.current))
+        if (typingIdxRef.current < fullText.length) {
+          typingTimerRef.current = setTimeout(typeStep, 25)
+        }
+      }
+    }
+    if (typingIdxRef.current < fullText.length) {
+      typingTimerRef.current = setTimeout(typeStep, 25)
+    }
+    return () => { if (typingTimerRef.current) clearTimeout(typingTimerRef.current) }
+  }, [streamingReply?.text])
 
   const connectionMap = useMemo(() => {
     const map = new Map<string, any>()
@@ -107,7 +133,7 @@ export function LiveFeed({ danmaku, completedHistory, streamingReply }: Props) {
                   <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: 'rgba(204,255,0,0.7)' }}>生成中...</span>
                 </div>
                 <p className="text-sm leading-relaxed" style={{ color: '#ebebeb', fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {streamingReply.text}
+                  {typingText || streamingReply.text}
                   <span className="inline-block w-0.5 h-3.5 bg-lime ml-0.5 animate-pulse" />
                 </p>
               </div>

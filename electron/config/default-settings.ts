@@ -1,131 +1,130 @@
- import { AppSettings, FilterRule, PersonaConfig } from '../types'
- 
- /** 默认过滤规则 —— 针对抖音娱乐直播场景设计 */
- export const DEFAULT_FILTER_RULES: FilterRule[] = [
-   {
-     id: 'min-length',
-     name: '最短字数过滤',
-     type: 'length',
-     enabled: true,
-     minLength: 2,
-     description: '过滤少于指定字数的弹幕（纯"1""666""哈哈"等）',
-   },
-   {
-     id: 'emoji-only',
-     name: '纯表情弹幕',
-     type: 'emoji_only',
-     enabled: true,
-     description: '过滤仅包含 emoji/表情符号的弹幕',
-   },
-   {
-     id: 'repeat-spam',
-     name: '重复刷屏过滤',
-     type: 'repeat',
-     enabled: true,
-     maxRepeat: 3,
-     description: '短时间内重复发送相同内容的弹幕，仅保留前几条',
-   },
-   {
-     id: 'ad-keywords',
-     name: '广告关键词过滤',
-     type: 'ad',
-     enabled: true,
-     pattern: '加微信|加V|qousa|私我|私聊|扫码|兼职|日赚|月入|招代理|收徒|公众号|淘宝|拼多多|刷单|点赞员',
-     description: '匹配常见广告/引流关键词的弹幕',
-   },
-   {
-     id: 'number-char-only',
-     name: '纯数字字母过滤',
-     type: 'regex',
-     enabled: true,
-     pattern: '^[0-9a-zA-Z\\s]+$',
-     description: '过滤纯数字/字母/无意义字符组合（如 "123456""jfksl""66666"）',
-   },
-   {
-     id: 'url-filter',
-     name: '链接过滤',
-     type: 'regex',
-     enabled: true,
-     pattern: 'https?://|www\\.|[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}(/|\\b)',
-     description: '过滤包含 URL 链接的弹幕',
-   },
-   {
-     id: 'too-long',
-     name: '过长弹幕过滤',
-     type: 'length',
-     enabled: false,
-     maxLength: 100,
-     description: '过滤超过指定字数的弹幕（某些用户刷屏长文本）',
-   },
- ]
- 
- /** 默认主播人设模板 */
- export const DEFAULT_PERSONA: PersonaConfig = {
-   id: 'default',
-   name: '默认人设',
-   nicknames: ['主播', '老大', '大哥'],
-   personality: ['亲切', '幽默', '真诚'],
-   style: '闲聊互动',
-   tone: '轻松自然，像朋友聊天一样',
-   catchphrases: ['感谢老铁', '这个问题问得好', '来，安排'],
-   forbiddenTopics: ['政治', '宗教', '涉黄内容', '人身攻击'],
-   fanTitle: '家人们',
-   background: '一位热爱直播的娱乐主播',
-   strengths: ['聊天互动', '讲故事', '接梗'],
-   greetingPhrase: '欢迎家人们来到直播间',
-   signOff: '感谢大家的陪伴，明天见',
-   customPrompt: '',
- }
- 
- /** 电台主播人设模板 */
- export const RADIO_PERSONA: PersonaConfig = {
-   id: 'radio-host',
-   name: '电台主播',
-   nicknames: ['主播', '电台君', '主持人'],
-   personality: ['温暖', '感性', '有故事感', '沉稳'],
-   style: '音乐电台 / 情感夜话 / 灵异故事',
-   tone: '娓娓道来，语速适中，偶尔感性，有画面感',
-   catchphrases: ['你听到了吗', '这首歌背后有一个故事', '夜已深，我来陪你'],
-   forbiddenTopics: ['政治', '宗教', '涉黄内容', '人身攻击'],
-   fanTitle: '夜听人',
-   background: '午夜电台主播，用声音和故事陪伴深夜未眠的人',
-   strengths: ['讲灵异故事', '音乐赏析', '情感共鸣', '氛围营造'],
-   greetingPhrase: '夜深了，欢迎你来到我的电台',
-   signOff: '今晚的节目就到这，愿你有个好梦',
-   customPrompt: '你是一个午夜电台主播，擅长用声音营造氛围。讲故事时注重细节描写和环境烘托，让听众有身临其境的感觉。点歌环节要能说出歌曲背后的故事或情感。',
- }
- 
- /** 才艺主播人设模板 */
- export const TALENT_PERSONA: PersonaConfig = {
-   id: 'talent-host',
-   name: '才艺主播',
-   nicknames: ['主播', '小姐姐', '小哥哥', '才艺担当'],
-   personality: ['活泼', '开朗', '有才', '亲和力强'],
-   style: '唱歌 / 舞蹈 / 乐器才艺展示',
-   tone: '活力满满，热情回应，偶尔撒娇',
-   catchphrases: ['谢谢xx的礼物', '想听什么歌？', '安排上了'],
-   forbiddenTopics: ['政治', '宗教', '涉黄内容', '人身攻击'],
-   fanTitle: '宝贝们',
-   background: '一个热爱舞台的才艺主播，擅长多种表演形式',
-   strengths: ['唱歌', '互动', '活跃气氛', '即兴表演'],
-   greetingPhrase: '欢迎新来的宝贝们，今天想听什么？',
-   signOff: '今天的直播就到这啦，爱你们，拜拜',
-   customPrompt: '',
- }
- 
- /** 默认应用设置 */
- export const DEFAULT_SETTINGS: AppSettings = {
-   deepseekApiKey: 'your-api-key-here',
-   deepseekModel: 'deepseek-chat',
-   roomId: '',
-   captureMethod: 'playwright',
-   aiEnabled: true,
-   aiBatchInterval: 8,
-   aiBatchSize: 15,
-   personaId: 'default',
-   displayMode: 'detailed',
-   theme: 'dark',
-   windowOpacity: 1,
-   alwaysOnTop: false,
- }
+import { AppSettings, FilterRule, PersonaConfig } from '../types'
 
+/** ?????? ?? ???????????? */
+export const DEFAULT_FILTER_RULES: FilterRule[] = [
+  {
+    id: 'min-length',
+    name: '\u6700\u77ed\u5b57\u6570\u8fc7\u6ee4',
+    type: 'length',
+    enabled: true,
+    minLength: 2,
+    description: '\u8fc7\u6ee4\u5c11\u4e8e\u6307\u5b9a\u5b57\u6570\u7684\u5f39\u5e55\uff08\u7eaf\u201c1\u201d\u201c666\u201d\u201c\u54c8\u54c8\u201d\u7b49\uff09',
+  },
+  {
+    id: 'emoji-only',
+    name: '\u7eaf\u8868\u60c5\u5f39\u5e55',
+    type: 'emoji_only',
+    enabled: true,
+    description: '\u8fc7\u6ee4\u4ec5\u5305\u542b emoji/\u8868\u60c5\u7b26\u53f7\u7684\u5f39\u5e55',
+  },
+  {
+    id: 'repeat-spam',
+    name: '\u91cd\u590d\u5237\u5c4f\u8fc7\u6ee4',
+    type: 'repeat',
+    enabled: true,
+    maxRepeat: 3,
+    description: '\u77ed\u65f6\u95f4\u5185\u91cd\u590d\u53d1\u9001\u76f8\u540c\u5185\u5bb9\u7684\u5f39\u5e55\uff0c\u4ec5\u4fdd\u7559\u524d\u51e0\u6761',
+  },
+  {
+    id: 'ad-keywords',
+    name: '\u5e7f\u544a\u5173\u952e\u8bcd\u8fc7\u6ee4',
+    type: 'ad',
+    enabled: true,
+    pattern: '\u52a0\u5fae\u4fe1|\u52a0V|qousa|\u79c1\u6211|\u79c1\u804a|\u626b\u7801|\u517c\u804c|\u65e5\u8d5a|\u6708\u5165|\u62db\u4ee3\u7406|\u6536\u5f92|\u516c\u4f17\u53f7|\u6dd8\u5b9d|\u62fc\u591a\u591a|\u5237\u5355|\u70b9\u8d5e\u5458',
+    description: '\u5339\u914d\u5e38\u89c1\u5e7f\u544a/\u5f15\u6d41\u5173\u952e\u8bcd\u7684\u5f39\u5e55',
+  },
+  {
+    id: 'number-char-only',
+    name: '\u7eaf\u6570\u5b57\u5b57\u6bcd\u8fc7\u6ee4',
+    type: 'regex',
+    enabled: true,
+    pattern: '^[0-9a-zA-Z\\s]+$',
+    description: '\u8fc7\u6ee4\u7eaf\u6570\u5b57/\u5b57\u6bcd/\u65e0\u610f\u4e49\u5b57\u7b26\u7ec4\u5408\uff08\u5982 \u201c123456\u201d\u201cjfksl\u201d\u201c66666\u201d\uff09',
+  },
+  {
+    id: 'url-filter',
+    name: '\u94fe\u63a5\u8fc7\u6ee4',
+    type: 'regex',
+    enabled: true,
+    pattern: 'https?://|www\\.|[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}(/|\\b)',
+    description: '\u8fc7\u6ee4\u5305\u542b URL \u94fe\u63a5\u7684\u5f39\u5e55',
+  },
+  {
+    id: 'too-long',
+    name: '\u8fc7\u957f\u5f39\u5e55\u8fc7\u6ee4',
+    type: 'length',
+    enabled: false,
+    maxLength: 100,
+    description: '\u8fc7\u6ee4\u8d85\u8fc7\u6307\u5b9a\u5b57\u6570\u7684\u5f39\u5e55\uff08\u67d0\u4e9b\u7528\u6237\u5237\u5c4f\u957f\u6587\u672c\uff09',
+  },
+]
+
+/** ???????? */
+export const DEFAULT_PERSONA: PersonaConfig = {
+  id: 'default',
+  name: '\u9ed8\u8ba4\u4eba\u8bbe',
+  nicknames: ['\u4e3b\u64ad', '\u8001\u5927', '\u5927\u54e5'],
+  personality: ['\u4eb2\u5207', '\u5e7d\u9ed8', '\u771f\u8bda'],
+  style: '\u95f2\u804a\u4e92\u52a8',
+  tone: '\u8f7b\u677e\u81ea\u7136\uff0c\u50cf\u670b\u53cb\u804a\u5929\u4e00\u6837',
+  catchphrases: ['\u611f\u8c22\u8001\u94c1', '\u8fd9\u4e2a\u95ee\u9898\u95ee\u5f97\u597d', '\u6765\uff0c\u5b89\u6392'],
+  forbiddenTopics: ['\u653f\u6cbb', '\u5b97\u6559', '\u6d89\u9ec4\u5185\u5bb9', '\u4eba\u8eab\u653b\u51fb'],
+  fanTitle: '\u5bb6\u4eba\u4eec',
+  background: '\u4e00\u4f4d\u70ed\u7231\u76f4\u64ad\u7684\u5a31\u4e50\u4e3b\u64ad',
+  strengths: ['\u804a\u5929\u4e92\u52a8', '\u8bb2\u6545\u4e8b', '\u63a5\u6897'],
+  greetingPhrase: '\u6b22\u8fce\u5bb6\u4eba\u4eec\u6765\u5230\u76f4\u64ad\u95f4',
+  signOff: '\u611f\u8c22\u5927\u5bb6\u7684\u966a\u4f34\uff0c\u660e\u5929\u89c1',
+  customPrompt: '',
+}
+
+/** ???????? */
+export const RADIO_PERSONA: PersonaConfig = {
+  id: 'radio-host',
+  name: '\u7535\u53f0\u4e3b\u64ad',
+  nicknames: ['\u4e3b\u64ad', '\u7535\u53f0\u541b', '\u4e3b\u6301\u4eba'],
+  personality: ['\u6e29\u6696', '\u611f\u6027', '\u6709\u6545\u4e8b\u611f', '\u6c89\u7a33'],
+  style: '\u97f3\u4e50\u7535\u53f0 / \u60c5\u611f\u591c\u8bdd / \u7075\u5f02\u6545\u4e8b',
+  tone: '\u59d3\u59d3\u9053\u6765\uff0c\u8bed\u901f\u9002\u4e2d\uff0c\u5076\u5c14\u611f\u6027\uff0c\u6709\u753b\u9762\u611f',
+  catchphrases: ['\u4f60\u542c\u5230\u4e86\u5417', '\u8fd9\u9996\u6b4c\u80cc\u540e\u6709\u4e00\u4e2a\u6545\u4e8b', '\u591c\u5df2\u6df1\uff0c\u6211\u6765\u966a\u4f60'],
+  forbiddenTopics: ['\u653f\u6cbb', '\u5b97\u6559', '\u6d89\u9ec4\u5185\u5bb9', '\u4eba\u8eab\u653b\u51fb'],
+  fanTitle: '\u591c\u542c\u4eba',
+  background: '\u5348\u591c\u7535\u53f0\u4e3b\u64ad\uff0c\u7528\u58f0\u97f3\u548c\u6545\u4e8b\u966a\u4f34\u6df1\u591c\u672a\u7720\u7684\u4eba',
+  strengths: ['\u8bb2\u7075\u5f02\u6545\u4e8b', '\u97f3\u4e50\u8d4f\u6790', '\u60c5\u611f\u5171\u9e23', '\u6c1b\u56f4\u8425\u9020'],
+  greetingPhrase: '\u591c\u6df1\u4e86\uff0c\u6b22\u8fce\u4f60\u6765\u5230\u6211\u7684\u7535\u53f0',
+  signOff: '\u4eca\u665a\u7684\u8282\u76ee\u5c31\u5230\u8fd9\uff0c\u613f\u4f60\u6709\u4e2a\u597d\u68a6',
+  customPrompt: '\u4f60\u662f\u4e00\u4e2a\u5348\u591c\u7535\u53f0\u4e3b\u64ad\uff0c\u64c5\u957f\u7528\u58f0\u97f3\u8425\u9020\u6c1b\u56f4\u3002\u8bb2\u6545\u4e8b\u65f6\u6ce8\u91cd\u7ec6\u8282\u63cf\u5199\u548c\u73af\u5883\u886c\u6258\uff0c\u8ba9\u542c\u4f17\u6709\u8eab\u4e34\u5176\u5883\u7684\u611f\u89c9\u3002\u70b9\u6b4c\u73af\u8282\u8981\u80fd\u8bf4\u51fa\u6b4c\u66f2\u80cc\u540e\u7684\u6545\u4e8b\u6216\u60c5\u611f\u3002',
+}
+
+/** ???????? */
+export const TALENT_PERSONA: PersonaConfig = {
+  id: 'talent-host',
+  name: '\u624d\u827a\u4e3b\u64ad',
+  nicknames: ['\u4e3b\u64ad', '\u5c0f\u59d0\u59d0', '\u5c0f\u54e5\u54e5', '\u624d\u827a\u62c5\u5f53'],
+  personality: ['\u6d3b\u6cfc', '\u5f00\u6717', '\u6709\u624d', '\u4eb2\u548c\u529b\u5f3a'],
+  style: '\u5531\u6b4c / \u821e\u8e48 / \u4e50\u5668\u624d\u827a\u5c55\u793a',
+  tone: '\u6d3b\u529b\u6ee1\u6ee1\uff0c\u70ed\u60c5\u56de\u5e94\uff0c\u5076\u5c14\u6492\u5a07',
+  catchphrases: ['\u8c22\u8c22xx\u7684\u793c\u7269', '\u60f3\u542c\u4ec0\u4e48\u6b4c\uff1f', '\u5b89\u6392\u4e0a\u4e86'],
+  forbiddenTopics: ['\u653f\u6cbb', '\u5b97\u6559', '\u6d89\u9ec4\u5185\u5bb9', '\u4eba\u8eab\u653b\u51fb'],
+  fanTitle: '\u5b9d\u8d1d\u4eec',
+  background: '\u4e00\u4e2a\u70ed\u7231\u821e\u53f0\u7684\u624d\u827a\u4e3b\u64ad\uff0c\u64c5\u957f\u591a\u79cd\u8868\u6f14\u5f62\u5f0f',
+  strengths: ['\u5531\u6b4c', '\u4e92\u52a8', '\u6d3b\u8dc3\u6c14\u6c1b', '\u5373\u5174\u8868\u6f14'],
+  greetingPhrase: '\u6b22\u8fce\u65b0\u6765\u7684\u5b9d\u8d1d\u4eec\uff0c\u4eca\u5929\u60f3\u542c\u4ec0\u4e48\uff1f',
+  signOff: '\u4eca\u5929\u7684\u76f4\u64ad\u5c31\u5230\u8fd9\u5566\uff0c\u7231\u4f60\u4eec\uff0c\u62dc\u62dc',
+  customPrompt: '',
+}
+
+/** ?????? */
+export const DEFAULT_SETTINGS: AppSettings = {
+  deepseekApiKey: 'your-api-key-here',
+  deepseekModel: 'deepseek-chat',
+  roomId: '',
+  captureMethod: 'playwright',
+  aiEnabled: true,
+  aiBatchInterval: 8,
+  aiBatchSize: 15,
+  personaId: 'default',
+  displayMode: 'detailed',
+  theme: 'dark',
+  windowOpacity: 1,
+  alwaysOnTop: false,
+}
