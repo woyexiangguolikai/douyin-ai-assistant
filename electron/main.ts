@@ -15,50 +15,39 @@ let apiToken: string | null = null
 let apiBaseUrl = 'http://localhost:3001'
 let heartbeatInterval: NodeJS.Timeout | null = null
 let pendingDanmaku: any[] = []
+
 let recentContext: any[] = []
 let aiDebounceTimer: NodeJS.Timeout | null = null
+let currentReplyMode = 'auto'
+
+function stopHeartbeat() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval)
+    heartbeatInterval = null
+  }
+}
+
 function startHeartbeat() {
   stopHeartbeat()
-  heartbeatInterval = setInterval(async () => {
+  heartbeatInterval = setInterval(() => {
     if (!apiToken) return
-    try {
-      const settings = store.getSettings()
-      const roomId = settings.roomId
-      if (!roomId) return
-      const aiOk = aiService?.isReady
-      const status = aiOk ? 'online' : 'error'
-      const msg = aiOk ? '' : 'DeepSeek API 未配置或 Key 无效'
-      await fetch(apiBaseUrl + '/api/rooms/heartbeat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiToken },
-        body: JSON.stringify({ room_id: roomId, status, status_message: msg })
-      })
-    } catch {}
+    const settings = store.getSettings()
+    const roomId = settings.roomId
+    if (!roomId) return
+    const aiOk = aiService?.isReady
+    const status = aiOk ? 'online' : 'error'
+    const msg = aiOk ? '' : 'DeepSeek API 未配置或 Key 无效'
+    fetch(apiBaseUrl + '/api/rooms/heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiToken },
+      body: JSON.stringify({ room_id: roomId, status, status_message: msg })
+    }).catch(() => {})
   }, 60000)
 }
-function stopHeartbeat() {
-  if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null }
-}
+
 function createWindow() {
-  mainWindow = new BrowserWindow({
-    width: 1200, height: 800, minWidth: 900, minHeight: 600,
-    title: '抖音AI直播助手',
-    backgroundColor: '#0f1117',
-    frame: false,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  })
-
-  if (process.argv.includes("--dev")) {
-    mainWindow!.loadFile(path.join(__dirname, '../dist/index.html'))
-    // devtools disabled
-  } else {
-    mainWindow!.loadFile(path.join(__dirname, '../dist/index.html'))
-  }
-
+  if (!mainWindow) return
+  mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   mainWindow.on('closed', () => { mainWindow = null })
 }
 
@@ -70,20 +59,13 @@ function initServices() {
   aiService.configure(settings)
   if (settings.roomId) capture.updateFilterRules(store.getFilterRules())
 
-  // 弹幕来了 → 实时入队 + 防抖推给 AI
   capture.on('danmaku', (danmaku: Danmaku) => {
-//     console.log('[DEBUG] Danmaku from capture:', danmaku.username, danmaku.content.substring(0, 30))
-//     console.log('[DEBUG] Sending to renderer, mainWindow exists:', !!mainWindow)
     if (mainWindow) mainWindow.webContents.send(IPC_CHANNELS.DANMAKU_RECEIVED, danmaku)
-    // 保持上下文窗口（最近30条）
+
     recentContext.push(danmaku)
     if (recentContext.length > 30) recentContext.splice(0, recentContext.length - 30)
 
-    // 防抖：1.5 秒内来的弹幕合并处理
-    // 防抖：1.5 秒内来的弹幕合并处理
     if (danmaku.type !== 'gift' && danmaku.type !== 'enter' && danmaku.type !== 'system') {
-      recentContext.push(danmaku)
-      if (recentContext.length > 30) recentContext.splice(0, recentContext.length - 30)
       pendingDanmaku.push(danmaku)
       if (aiDebounceTimer) clearTimeout(aiDebounceTimer)
       aiDebounceTimer = setTimeout(() => processAIBatch(), 1500)
@@ -100,7 +82,6 @@ function initServices() {
     mainWindow?.webContents?.send('capture-error', error)
   })
 
-  // AI 流式回复 → 转发给前端
   aiService.on('reply-stream', (data: any) => {
     mainWindow?.webContents.send('ai-reply-stream', data)
   })
@@ -118,9 +99,8 @@ function processAIBatch() {
   const persona = store.getPersona(settings.personaId)
   if (!persona) return
 
-  // 取当前批 + 最近几条约旦上下文
   const context = recentContext.slice(-8)
-  aiService.processRealtime(context, persona)
+  aiService.processRealtime(context, persona, currentReplyMode, recentContext.map(d => d.content).slice(-5))
 }
 
 function registerIPC() {
@@ -142,7 +122,6 @@ function registerIPC() {
     return { success: true }
   })
 
-  // API 登录
   ipcMain.handle('api-login', async (_event, apiBase: string, username: string, password: string) => {
     try {
       const res = await fetch(apiBase + '/api/auth/login', {
@@ -154,14 +133,12 @@ function registerIPC() {
       if (!res.ok) return { success: false, error: data.error || '登录失败' }
       apiToken = data.token
       apiBaseUrl = apiBase
-      
-      // 获取该账号的直播间配置
+
       const roomRes = await fetch(apiBase + '/api/rooms', {
         headers: { 'Authorization': 'Bearer ' + data.token }
       })
       const rooms = await roomRes.json()
-      
-      // 保存到本地
+
       const settings = store.getSettings()
       settings.deepseekApiKey = data.deepseek_api_key || settings.deepseekApiKey
       if (rooms && rooms.length > 0) {
@@ -169,23 +146,18 @@ function registerIPC() {
       }
       store.saveSettings(settings)
       aiService.configure(settings)
-      
-      // 启动心跳
       startHeartbeat()
-      
       return { success: true, user: data.user, rooms }
     } catch (e: any) {
       return { success: false, error: '无法连接服务器: ' + e.message }
     }
   })
 
-  // 心跳
   ipcMain.handle('api-logout', async () => {
     apiToken = null; apiBaseUrl = 'http://localhost:3001'
     stopHeartbeat()
     return { success: true }
   })
-
 
   ipcMain.handle(IPC_CHANNELS.SWITCH_CAPTURE_METHOD, async (_event, method: CaptureMethod) => {
     await capture.switchMethod(method)
@@ -241,7 +213,6 @@ function registerIPC() {
   ipcMain.handle('window-close', () => mainWindow?.close())
   ipcMain.handle('window-is-maximized', () => mainWindow?.isMaximized() || false)
 
-  // 导出文件
   ipcMain.handle('export-text', async (_event, content: string, defaultName: string) => {
     const fs = require('fs')
     const { dialog } = require('electron')
@@ -254,6 +225,20 @@ function registerIPC() {
       return { success: true }
     }
     return { success: false }
+  })
+
+  ipcMain.handle('set-reply-mode', async (_event, mode: string) => {
+    currentReplyMode = mode
+    return { success: true }
+  })
+
+  ipcMain.handle('set-always-on-top', async (_event, value: boolean) => {
+    if (mainWindow) mainWindow.setAlwaysOnTop(value)
+    return { success: true }
+  })
+  ipcMain.handle('set-opacity', async (_event, value: number) => {
+    if (mainWindow) mainWindow.setOpacity(value)
+    return { success: true }
   })
 }
 

@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react'
-import { Copy, Check, Radio, Sparkles } from 'lucide-react'
+﻿import React, { useState, useRef, useEffect, useMemo } from 'react'
+import { Copy, Check, Radio } from 'lucide-react'
 
 interface Props {
   danmaku: any[]
@@ -10,13 +10,8 @@ interface Props {
 export function LiveFeed({ danmaku, completedHistory, streamingReply }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const autoScrollRef = useRef(true)
-  const [copiedId, setCopiedId] = React.useState<string | null>(null)
-  const [typingText, setTypingText] = useState('')
-  const typingIndexRef = useRef(0)
-  const targetRef = useRef('')
-  const timerRef = useRef<any>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  // Build connection map: danmaku key -> AI reply
   const connectionMap = useMemo(() => {
     const map = new Map<string, any>()
     for (const reply of completedHistory) {
@@ -28,21 +23,16 @@ export function LiveFeed({ danmaku, completedHistory, streamingReply }: Props) {
     return map
   }, [completedHistory.length])
 
-  // Build feed rows: each row = danmaku on left, connected AI on right
   const rows = useMemo(() => {
     const items: Array<{ key: string; danmaku: any; aiReply: any }> = []
-    const seen = new Set<string>()
-
     for (const dm of danmaku) {
       const key = dm.username + ':' + dm.content
-      seen.add(key)
       items.push({
-        key: dm.id || key,
+        key: dm.id || key + '_' + Date.now(),
         danmaku: dm,
         aiReply: connectionMap.get(key) || null,
       })
     }
-
     return items
   }, [danmaku.length, completedHistory.length, connectionMap])
 
@@ -53,28 +43,6 @@ export function LiveFeed({ danmaku, completedHistory, streamingReply }: Props) {
   }, [rows.length, streamingReply?.text])
 
   const handleScroll = () => {
-
-  // Typing animation
-  useEffect(() => {
-    if (!streamingReply) {
-      setTypingText('')
-      typingIndexRef.current = 0
-      targetRef.current = ''
-      return
-    }
-    targetRef.current = streamingReply.text
-    const typeStep = () => {
-      if (typingIndexRef.current < targetRef.current.length) {
-        typingIndexRef.current += 2
-        setTypingText(targetRef.current.substring(0, typingIndexRef.current))
-        if (typingIndexRef.current < targetRef.current.length) {
-          timerRef.current = setTimeout(typeStep, 30)
-        }
-      }
-    }
-    timerRef.current = setTimeout(typeStep, 30)
-    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
-  }, [streamingReply?.text])
     if (!containerRef.current) return
     const { scrollTop, scrollHeight, clientHeight } = containerRef.current
     autoScrollRef.current = scrollHeight - scrollTop - clientHeight < 50
@@ -99,7 +67,6 @@ export function LiveFeed({ danmaku, completedHistory, streamingReply }: Props) {
 
   return (
     <div className="h-full flex flex-col" style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-      {/* 列标题 */}
       <div className="flex items-stretch shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex-1 py-2 px-3">
           <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.4)' }}>弹幕</span>
@@ -110,9 +77,7 @@ export function LiveFeed({ danmaku, completedHistory, streamingReply }: Props) {
         </div>
       </div>
 
-      {/* 内容区 */}
       <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto">
-        {/* 流式回复（正在生成中） */}
         {streamingReply && (
           <div className="flex items-stretch min-h-[60px]">
             <div className="flex-1 px-3 py-2 flex items-start">
@@ -150,20 +115,15 @@ export function LiveFeed({ danmaku, completedHistory, streamingReply }: Props) {
           </div>
         )}
 
-        {/* 历史记录行 */}
         {rows.map((row) => {
-          // 找到这条弹幕对应的 AI 回复（如果有）
           const aiReply = row.aiReply
-          // 检查这条弹幕是否是流式回复的来源
           const isStreamingSource = streamingReply && streamingReply.danmaku?.some(
             (d: any) => d.username === row.danmaku.username && d.content === row.danmaku.content
           )
-          // 如果这条弹幕已被流式回复覆盖，且已有完整的回复，则不用再标记
           const showConnector = aiReply || isStreamingSource
 
           return (
             <div key={row.key} className="flex items-stretch min-h-[36px] hover:bg-white/[0.01] transition-colors">
-              {/* 左侧：弹幕 */}
               <div className="flex-1 px-3 py-1.5 flex items-start">
                 <span className="text-xs font-medium shrink-0" style={{ fontFamily: "'Space Grotesk', sans-serif", color: '#ccff00', minWidth: '70px' }}>
                   {row.danmaku.username}
@@ -173,14 +133,12 @@ export function LiveFeed({ danmaku, completedHistory, streamingReply }: Props) {
                 </span>
               </div>
 
-              {/* 中间：虚线连接 */}
               <div className="w-8 shrink-0 flex justify-center pt-3 relative">
                 {showConnector && (
                   <div className="w-px h-full" style={{ borderLeft: '2px dashed rgba(204,255,0,0.25)' }} />
                 )}
               </div>
 
-              {/* 右侧：AI 回复 */}
               <div className="flex-1 px-3 py-1.5 flex items-start">
                 {aiReply && (
                   <div className="w-full" style={{
@@ -208,11 +166,9 @@ export function LiveFeed({ danmaku, completedHistory, streamingReply }: Props) {
           )
         })}
 
-        {/* 底部空位 */}
         <div className="h-2" />
       </div>
 
-      {/* 底部统计 */}
       <div className="flex items-center gap-3 px-3 py-1.5 shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.3)' }}>
           弹幕 {danmaku.length} 条 · AI {completedHistory.length} 条

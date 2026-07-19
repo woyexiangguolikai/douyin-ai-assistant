@@ -26,13 +26,15 @@ export class AIService extends EventEmitter {
 
   async processRealtime(
     danmaku: { username: string; content: string }[],
-    persona: any
+    persona: any,
+    replyMode?: string,
+    recentReplies?: string[]
   ) {
     if (!this.client || this.processing) return
     this.processing = true
 
     try {
-      const prompt = buildRealtimePrompt(danmaku, persona)
+      const prompt = buildRealtimePrompt(danmaku, persona, replyMode, recentReplies)
       const stream = await this.client.chat.completions.create({
         model: 'deepseek-chat',
         messages: [

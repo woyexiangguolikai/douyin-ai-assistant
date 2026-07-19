@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { TitleBar } from './components/TitleBar'
-import { DanmakuFeed } from './components/DanmakuFeed'
-import { AIPanel } from './components/AIPanel'
 import ConnectionBar from './components/ConnectionBar'
 import SettingsPanel from './components/SettingsPanel'
 import { PersonaConfigPanel } from './components/PersonaConfigPanel'
@@ -10,7 +8,7 @@ import { LiveFeed } from './components/LiveFeed'
 import LoginPage from './LoginPage'
 import { Radio, MessageSquare, Settings, User, Shield } from 'lucide-react'
 
-type ViewType = 'live' | 'danmaku' | 'ai' | 'settings' | 'persona' | 'filters'
+type ViewType = 'live' | 'settings' | 'persona' | 'filters'
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 type CaptureMethod = 'websocket' | 'playwright'
 
@@ -47,11 +45,14 @@ export default function App() {
       setStats(s => ({ ...s, replied: s.replied + (data.items?.length || 0) }))
     })
     api.ai.onReplyStream((data: any) => {
-      if (data.done) {
-        const now = new Date()
-        const ts = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0')
-        setCompletedHistory((prev: any[]) => [{ id: data.id, text: data.text, danmaku: data.danmaku || [], time: ts }, ...prev].slice(-200))
+      if (!data.done) {
+        setStreamingReply({ text: data.text, danmaku: data.danmaku || [] })
+        return
       }
+      const now = new Date()
+      const ts = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0')
+      setCompletedHistory((prev: any[]) => [{ id: data.id, text: data.text, danmaku: data.danmaku || [], time: ts }, ...prev].slice(-200))
+      setStreamingReply(null)
     })
     return () => { api.capture.removeDanmakuListeners(); api.ai.removeRepliesListener(); api.ai.removeStreamListener() }
   }, [])
@@ -75,13 +76,18 @@ export default function App() {
     if (result?.success) setCaptureMethod(method)
   }, [])
 
+  const handleExport = async () => {
+    if (completedHistory.length === 0) return
+    const text = completedHistory.map(r => '[' + r.time + '] ' + (r.danmaku?.[0]?.username || '') + ': ' + (r.danmaku?.[0]?.content || '') + '\nAI: ' + r.text).join('\n\n')
+    await window.electronAPI?.export.save(text, 'ai-replies-' + new Date().toISOString().slice(0,10) + '.txt')
+  }
+
   const handleLogin = (token: string, user: any) => setLoggedIn(true)
 
   if (!loggedIn) return <LoginPage onLogin={handleLogin} />
 
   const navItems = [
     { id: 'live' as ViewType, label: '直播', icon: <MessageSquare size={16} /> },
-    { id: 'ai' as ViewType, label: 'AI 建议', icon: <Radio size={16} /> },
     { id: 'persona' as ViewType, label: '人设', icon: <User size={16} /> },
     { id: 'filters' as ViewType, label: '过滤', icon: <Shield size={16} /> },
     { id: 'settings' as ViewType, label: '设置', icon: <Settings size={16} /> },
@@ -116,6 +122,7 @@ export default function App() {
               {item.icon} {item.label}
             </button>
           ))}
+                              <button onClick={handleExport} className="px-2 py-1 bg-lime text-black font-bold text-[10px] rounded-pill hover:scale-105 transition-all font-mono uppercase tracking-wider">导出</button>
           <div className='ml-auto flex items-center gap-3 text-text-muted' style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
             <span>{stats.total} 条</span><span>过滤 {stats.filtered}</span><span>AI {stats.replied}</span>
           </div>
@@ -123,8 +130,6 @@ export default function App() {
 
         <main className='flex-1 overflow-hidden p-3' style={{ marginTop: '4px' }}>
           {currentView === 'live' && <LiveFeed danmaku={danmakuList} completedHistory={completedHistory} streamingReply={streamingReply} />}
-          {currentView === 'danmaku' && <DanmakuFeed items={danmakuList} />}
-          {currentView === 'ai' && <AIPanel replies={aiReplies} summary={aiSummary} completedHistory={completedHistory} />}
           {currentView === 'settings' && <SettingsPanel />}
           {currentView === 'persona' && <PersonaConfigPanel />}
           {currentView === 'filters' && <FilterConfigPanel />}

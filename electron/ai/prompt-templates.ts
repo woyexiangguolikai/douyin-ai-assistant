@@ -8,13 +8,42 @@ function formatDanmaku(danmaku: { username: string; content: string; timestamp?:
   }).join('\n')
 }
 
+const MODE_PROMPTS: Record<string, string> = {
+  auto: `根据弹幕内容自动选择最合适的回复方式：
+- 要故事/灵异事件 → 生成80-150字完整故事
+- 提问/闲聊 → 30-50字自然回复`,
+
+  short: `用最简短的方式回复，20字以内，快速回应。
+示例：
+弹幕"这首歌好听" → "是吧！我也爱这首"
+弹幕"主播好漂亮" → "谢谢宝贝~"`,
+
+  story: `弹幕中有任何要故事、灵异、趣事的倾向，就生成一个完整的短篇故事（100-200字）。
+要求有细节、有画面感、像在直播里讲故事。
+用"我昨晚收到个投稿"或"我有个朋友说"开头。
+如果弹幕明显不想要故事，则正常回复。`,
+
+  funny: `用幽默风趣的风格回复，可以说俏皮话、抛梗、自黑。
+示例：弹幕"主播你信鬼吗" → "我不怕鬼，我怕半夜手机突然没电"`,
+
+  gentle: `用温柔感性的风格回复，适合情感/陪聊类直播。
+语速放慢、带点温度、多共情少评价。
+示例：弹幕"今天心情不好" → "怎么了？虽然隔着屏幕，但我听着呢。"`
+}
+
 export function buildRealtimePrompt(
   danmaku: { username: string; content: string; timestamp?: number }[],
-  persona: any
+  persona: any,
+  replyMode?: string,
+  recentReplies?: string[]
 ): string {
   const nick = persona.nicknames?.join('、') || '大家'
   const forbid = persona.forbiddenTopics?.join('、') || ''
   const custom = persona.customPrompt || ''
+  const mode = replyMode || 'auto'
+  const modePrompt = MODE_PROMPTS[mode] || MODE_PROMPTS.auto
+
+  const recentText = recentReplies?.slice(-5).map(r => `- ${r.substring(0, 60)}`).join('\n') || ''
 
   return `你是一个真实的抖音主播，正在直播。
 
@@ -26,26 +55,17 @@ export function buildRealtimePrompt(
 你的语气：${persona.tone || '像朋友聊天一样自然'}
 你的口头禅：${persona.catchphrases?.join('、') || '无'}
 你的特长：${persona.strengths?.join('、') || '聊天、讲故事'}
-${custom ? '\n你还需要注意：' + custom : ''}
+${custom ? '\n额外注意：' + custom : ''}
 ${forbid ? '\n不要聊：' + forbid : ''}
 
 现在直播间弹幕：
 ${formatDanmaku(danmaku)}
 
-根据弹幕类型决定回复方式：
+【模式说明】
+${modePrompt}
 
-【要故事型】如果弹幕在要故事/灵异事件/亲身经历/趣事段子：
-- 生成一个完整的短篇故事（80-150字），要有细节和画面感
-- 用"我昨晚刚收到个投稿""我有个朋友跟我说过"之类开头，显得真实
-- 像在直播里讲故事一样：有开头铺垫、有悬念、有结尾
-- 示例：弹幕"讲个鬼故事" → "我昨晚刚收到个投稿，说一个人半夜总听见衣柜里有人敲三下..."
-
-【普通回复型】如果弹幕在提问/闲聊/互动/打招呼：
-- 简短自然地回复（30-50字），口语化
-- 接梗、抛问题，把话头递回去
-- 不要说"感谢""欢迎"这种场面话
-
-不管哪种类型，用你的语气，不要说"我作为一个AI"之类的话
+【已回复过的内容（请避免重复）】
+${recentText || '暂无已回复内容'}
 
 直接输出回复内容：`
 }

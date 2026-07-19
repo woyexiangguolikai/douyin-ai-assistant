@@ -56,6 +56,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     get: (roomId: string) => ipcRenderer.invoke(IPC.GET_SESSION_HISTORY, roomId),
     clear: (roomId?: string) => ipcRenderer.invoke(IPC.CLEAR_HISTORY, roomId),
   },
+  misc: {
+    setReplyMode: (m: string) => ipcRenderer.invoke('set-reply-mode', m),
+  },
+
   auth: {
     login: (apiBase: string, username: string, password: string) =>
       ipcRenderer.invoke('api-login', apiBase, username, password),
