@@ -1,0 +1,33 @@
+appId: com.douyin-ai-assistant.app
+productName: 抖音AI直播助手
+copyright: Copyright © 2024
+
+directories:
+  output: release
+  buildResources: resources
+
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: resources/icon.png
+
+nsis:
+  oneClick: true
+  perMachine: false
+  createDesktopShortcut: true
+  shortcutName: 抖音AI直播助手
+
+asarUnpack:
+  - "**/*.node"
+  - "**/sql.js/**"
+  - "**/playwright/**"
+
+electronDownload:
+  mirror: https://github.com/electron/electron/releases/download/v

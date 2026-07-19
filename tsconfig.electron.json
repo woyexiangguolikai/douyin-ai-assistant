@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020", "dom"],
+    "skipLibCheck": true,
+    "outDir": "./dist-electron",
+    "rootDir": "./electron",
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "declaration": false,
+    "sourceMap": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": false
+  },
+  "include": ["electron/**/*"]
+}
