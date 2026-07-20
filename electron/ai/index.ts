@@ -34,8 +34,9 @@ export class AIService extends EventEmitter {
     this.processing = true
 
     try {
+      this.emit('reply-start', { danmaku })
       const prompt = buildRealtimePrompt(danmaku, persona, replyMode, recentReplies)
-      const stream = await this.client.chat.completions.create({
+      const completion = await this.client.chat.completions.create({
         model: 'deepseek-chat',
         messages: [
           { role: 'system', content: prompt },
@@ -43,17 +44,10 @@ export class AIService extends EventEmitter {
         ],
         temperature: 0.9,
         max_tokens: 500,
-        stream: true,
       })
 
-      let full = ''
-      for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta?.content || ''
-        full += delta
-        this.emit('reply-stream', { id: Date.now().toString(), text: full, done: false, danmaku })
-      }
-
-      this.emit('reply-stream', { id: Date.now().toString(), text: full, done: true, danmaku })
+      const text = completion.choices[0]?.message?.content || ''
+      this.emit('reply-stream', { id: Date.now().toString(), text, done: true, danmaku })
     } catch (err) {
       this.emit('error', `处理失败: ${(err as Error).message}`)
     } finally {

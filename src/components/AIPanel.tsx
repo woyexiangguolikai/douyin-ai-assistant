@@ -14,22 +14,27 @@ export function AIPanel({ replies, summary }: Props) {
   useEffect(() => {
     const api = window.electronAPI?.ai
     if (!api) return
+    api.onReplyStart((data: any) => {
+      setStreaming('generating'); setStreamingDone(false)
+      if (data.danmaku) setStreamingDanmaku(data.danmaku)
+    })
+
     api.onReplyStream((data: any) => {
       if (data.done) {
         setStreamingDone(true)
         const now = new Date()
         const t = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`
-        setHistory(prev => [{ id: data.id || 'h_'+Date.now(), text: data.text, time: t, danmaku: data.danmaku || [] }, ...prev])
-        setTimeout(() => { setStreaming(null); setStreamingDanmaku([]) }, 1500)
+        setHistory(prev => [...prev, { id: data.id || 'h_'+Date.now(), text: data.text, time: t, danmaku: data.danmaku || [] }])
+        setStreaming(null); setStreamingDanmaku([])
       } else {
-        setStreaming(data.text); setStreamingDone(false)
+        setStreaming('generating'); setStreamingDone(false)
         if (data.danmaku) setStreamingDanmaku(data.danmaku)
       }
     })
-    return () => { api.removeStreamListener() }
+    return () => { api.removeStartListener(); api.removeStreamListener() }
   }, [])
 
-  useEffect(() => { if (containerRef.current) containerRef.current.scrollTop = 0 }, [history.length, streaming])
+  useEffect(() => { if (containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight }, [history.length, streaming])
 
   const handleCopy = async (text: string, id: string) => {
     try { await navigator.clipboard.writeText(text); setCopiedId(id); setTimeout(() => setCopiedId(null), 2000) } catch {}
@@ -75,14 +80,18 @@ export function AIPanel({ replies, summary }: Props) {
               </div>
             )}
             <p className="text-sm font-heading leading-relaxed" style={{ color: '#ebebeb' }}>
-              {streaming}
-              {!streamingDone && <span className="inline-block w-0.5 h-3.5 bg-lime ml-0.5 animate-pulse" />}
+              AI 正在思考
+              <span className="inline-flex gap-0.5 ml-1.5">
+                <span className="w-1.5 h-1.5 bg-lime rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 bg-lime rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 bg-lime rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </span>
             </p>
           </div>
         )}
 
         {history.map((item: any) => (
-          <div key={item.id} style={{
+          <div key={item.id} className="animate-fade-in" style={{
             background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: '1.5rem', padding: '1rem'
           }}>
