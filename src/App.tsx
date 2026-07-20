@@ -19,6 +19,7 @@ export default function App() {
   const [aiReplies, setAiReplies] = useState<any[]>([])
   const [completedHistory, setCompletedHistory] = useState<any[]>([])
   const [streamingReply, setStreamingReply] = useState<{text:string;danmaku:any[]}|null>(null)
+  const [aiGenerating, setAiGenerating] = useState(false)
   const [aiSummary, setAiSummary] = useState('')
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected')
   const [captureMethod, setCaptureMethod] = useState<CaptureMethod>('playwright')
@@ -44,6 +45,7 @@ export default function App() {
       if (data.summary) setAiSummary(data.summary)
       setStats(s => ({ ...s, replied: s.replied + (data.items?.length || 0) }))
     })
+    api.ai.onReplyStart(() => { setAiGenerating(true) })
     api.ai.onReplyStream((data: any) => {
       if (!data.done) {
         setStreamingReply({ text: data.text, danmaku: data.danmaku || [] })
@@ -51,10 +53,10 @@ export default function App() {
       }
       const now = new Date()
       const ts = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0')
-      setCompletedHistory((prev: any[]) => [{ id: data.id, text: data.text, danmaku: data.danmaku || [], time: ts }, ...prev].slice(-200))
+      setStreamingReply({ text: data.text, danmaku: data.danmaku || [] }); setAiGenerating(false); setCompletedHistory((prev: any[]) => [...prev, { id: data.id, text: data.text, danmaku: data.danmaku || [], time: ts }].slice(-200))
       setStreamingReply(null)
     })
-    return () => { api.capture.removeDanmakuListeners(); api.ai.removeRepliesListener(); api.ai.removeStreamListener() }
+    return () => { api.capture.removeDanmakuListeners(); api.ai.removeRepliesListener(); api.ai.removeStreamListener(); api.ai.removeStartListener() }
   }, [])
 
   useEffect(() => {
@@ -129,7 +131,7 @@ export default function App() {
         </div>
 
         <main className='flex-1 overflow-hidden p-3' style={{ marginTop: '4px' }}>
-          {currentView === 'live' && <LiveFeed danmaku={danmakuList} completedHistory={completedHistory} streamingReply={streamingReply} />}
+          {currentView === 'live' && <LiveFeed danmaku={danmakuList} completedHistory={completedHistory} streamingReply={streamingReply} aiGenerating={aiGenerating} />}
           {currentView === 'settings' && <SettingsPanel />}
           {currentView === 'persona' && <PersonaConfigPanel />}
           {currentView === 'filters' && <FilterConfigPanel />}

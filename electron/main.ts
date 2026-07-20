@@ -75,7 +75,7 @@ function initServices() {
     recentContext.push(danmaku)
     if (recentContext.length > 30) recentContext.splice(0, recentContext.length - 30)
 
-    if (danmaku.type !== 'gift' && danmaku.type !== 'enter' && danmaku.type !== 'system') {
+    if (danmaku.type !== 'gift' && danmaku.type !== 'enter' && danmaku.type !== 'system' && danmaku.type !== 'like') {
       pendingDanmaku.push(danmaku)
       if (aiDebounceTimer) clearTimeout(aiDebounceTimer)
       aiDebounceTimer = setTimeout(() => processAIBatch(), 1500)
@@ -87,7 +87,7 @@ function initServices() {
   })
 
   capture.on('error', (error: string) => {
-    console.error('[Capture Error]', error)
+    try{console.error('[Capture Error]', error)}catch{}
     mainWindow?.webContents?.send('connection-status', 'error')
     mainWindow?.webContents?.send('capture-error', error)
   })

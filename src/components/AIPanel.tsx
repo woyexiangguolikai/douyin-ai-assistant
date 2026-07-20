@@ -34,7 +34,15 @@ export function AIPanel({ replies, summary }: Props) {
     return () => { api.removeStartListener(); api.removeStreamListener() }
   }, [])
 
-  useEffect(() => { if (containerRef.current) containerRef.current.scrollTop = containerRef.current.scrollHeight }, [history.length, streaming])
+  useEffect(() => {
+    if (containerRef.current) {
+      requestAnimationFrame(() => {
+        if (containerRef.current) {
+          containerRef.current.scrollTop = containerRef.current.scrollHeight
+        }
+      })
+    }
+  }, [history.length, streaming])
 
   const handleCopy = async (text: string, id: string) => {
     try { await navigator.clipboard.writeText(text); setCopiedId(id); setTimeout(() => setCopiedId(null), 2000) } catch {}
