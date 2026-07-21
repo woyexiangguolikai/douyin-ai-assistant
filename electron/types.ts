@@ -12,7 +12,7 @@
    username: string
    content: string
    timestamp: number
-   type: 'normal' | 'gift' | 'enter' | 'system'
+   type: 'normal' | 'gift' | 'enter' | 'system' | 'like'
    giftInfo?: {
      name: string
      count: number

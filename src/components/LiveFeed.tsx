@@ -1,42 +1,17 @@
-﻿import React, { useState, useRef, useEffect, useMemo } from 'react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { Copy, Check, Radio } from 'lucide-react'
 
 interface Props {
   danmaku: any[]
   completedHistory: any[]
   streamingReply: { text: string; danmaku: any[] } | null
+  aiGenerating?: boolean
 }
 
-export function LiveFeed({ danmaku, completedHistory, streamingReply }: Props) {
+export function LiveFeed({ danmaku, completedHistory, streamingReply, aiGenerating }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const autoScrollRef = useRef(true)
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [typingText, setTypingText] = useState('')
-  const typingTimerRef = useRef<any>(null)
-  const typingIdxRef = useRef(0)
-
-  // Typing animation effect
-  useEffect(() => {
-    if (!streamingReply) {
-      setTypingText('')
-      typingIdxRef.current = 0
-      return
-    }
-    const fullText = streamingReply.text
-    const typeStep = () => {
-      if (typingIdxRef.current < fullText.length) {
-        typingIdxRef.current += 2
-        setTypingText(fullText.substring(0, typingIdxRef.current))
-        if (typingIdxRef.current < fullText.length) {
-          typingTimerRef.current = setTimeout(typeStep, 25)
-        }
-      }
-    }
-    if (typingIdxRef.current < fullText.length) {
-      typingTimerRef.current = setTimeout(typeStep, 25)
-    }
-    return () => { if (typingTimerRef.current) clearTimeout(typingTimerRef.current) }
-  }, [streamingReply?.text])
 
   const connectionMap = useMemo(() => {
     const map = new Map<string, any>()
@@ -64,9 +39,13 @@ export function LiveFeed({ danmaku, completedHistory, streamingReply }: Props) {
 
   useEffect(() => {
     if (autoScrollRef.current && containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight
+      requestAnimationFrame(() => {
+        if (containerRef.current) {
+          containerRef.current.scrollTop = containerRef.current.scrollHeight
+        }
+      })
     }
-  }, [rows.length, streamingReply?.text])
+  }, [rows.length, streamingReply, completedHistory.length])
 
   const handleScroll = () => {
     if (!containerRef.current) return
@@ -78,7 +57,7 @@ export function LiveFeed({ danmaku, completedHistory, streamingReply }: Props) {
     try { await navigator.clipboard.writeText(text); setCopiedId(id); setTimeout(() => setCopiedId(null), 2000) } catch {}
   }
 
-  const hasContent = rows.length > 0 || streamingReply
+  const hasContent = rows.length > 0 || streamingReply || aiGenerating
 
   if (!hasContent) {
     return (
@@ -104,6 +83,38 @@ export function LiveFeed({ danmaku, completedHistory, streamingReply }: Props) {
       </div>
 
       <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto">
+        {/* AI thinking indicator */}
+        {aiGenerating && !streamingReply && (
+          <div className="flex items-stretch min-h-[60px]">
+            <div className="flex-1 px-3 py-2" />
+            <div className="w-8 shrink-0 flex justify-center pt-3 relative">
+              <div className="w-px h-full" style={{ borderLeft: '2px dashed rgba(204,255,0,0.5)' }} />
+            </div>
+            <div className="flex-1 px-3 py-2 flex items-start">
+              <div className="w-full" style={{
+                background: 'rgba(204,255,0,0.06)',
+                border: '1px solid rgba(204,255,0,0.2)',
+                borderRadius: '1rem',
+                padding: '10px 14px',
+              }}>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Radio size={10} style={{ color: '#ccff00' }} className="animate-pulse" />
+                  <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: 'rgba(204,255,0,0.7)' }}>生成中...</span>
+                </div>
+                <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.5)', fontFamily: "'Space Grotesk', sans-serif" }}>
+                  AI 正在思考
+                  <span className="inline-flex gap-0.5 ml-1.5">
+                    <span className="w-1.5 h-1.5 bg-lime rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 bg-lime rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 bg-lime rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Streaming reply (shows when completed text arrives) */}
         {streamingReply && (
           <div className="flex items-stretch min-h-[60px]">
             <div className="flex-1 px-3 py-2 flex items-start">
@@ -121,26 +132,25 @@ export function LiveFeed({ danmaku, completedHistory, streamingReply }: Props) {
               <div className="w-px h-full" style={{ borderLeft: '2px dashed rgba(204,255,0,0.5)' }} />
             </div>
             <div className="flex-1 px-3 py-2 flex items-start">
-              <div className="w-full" style={{
+              <div className="w-full animate-fade-in" style={{
                 background: 'rgba(204,255,0,0.06)',
                 border: '1px solid rgba(204,255,0,0.2)',
                 borderRadius: '1rem',
                 padding: '10px 14px',
-                position: 'relative',
               }}>
-                <div className="flex items-center gap-1.5 mb-1" style={{animation: "fadeIn 0.3s ease-out"}}>
-                  <Radio size={10} style={{ color: '#ccff00' }} className="animate-pulse" />
-                  <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: 'rgba(204,255,0,0.7)' }}>生成中...</span>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Radio size={10} style={{ color: '#ccff00' }} />
+                  <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: 'rgba(204,255,0,0.7)' }}>AI 回复</span>
                 </div>
                 <p className="text-sm leading-relaxed" style={{ color: '#ebebeb', fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {typingText || streamingReply.text}
-                  <span className="inline-block w-0.5 h-3.5 bg-lime ml-0.5 animate-pulse" />
+                  {streamingReply.text}
                 </p>
               </div>
             </div>
           </div>
         )}
 
+        {/* Completed history rows */}
         {rows.map((row) => {
           const aiReply = row.aiReply
           const isStreamingSource = streamingReply && streamingReply.danmaku?.some(
@@ -167,7 +177,7 @@ export function LiveFeed({ danmaku, completedHistory, streamingReply }: Props) {
 
               <div className="flex-1 px-3 py-1.5 flex items-start">
                 {aiReply && (
-                  <div className="w-full" style={{
+                  <div className="w-full animate-fade-in" style={{
                     background: 'rgba(204,255,0,0.04)',
                     border: '1px solid rgba(204,255,0,0.12)',
                     borderRadius: '0.75rem',

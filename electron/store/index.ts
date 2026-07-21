@@ -178,6 +178,6 @@ export class Store {
         const buffer = Buffer.from(data)
         fs.writeFileSync(this.dbPath, buffer)
       }
-    } catch (e) { console.error('[Store] save:', (e as Error).message) }
+    } catch (e) { try { console.error('[Store] save:', (e as Error).message) } catch {} }
   }
 }

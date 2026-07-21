@@ -1,164 +1,147 @@
 import { Router } from 'express'
-import { getDb, saveDb } from '../db'
+import { getPool } from '../db'
 import { authMiddleware, adminOnly, AuthRequest } from '../middleware/auth'
 
 const router = Router()
 router.use(authMiddleware)
 
-// GET /api/rooms
 router.get('/', async (req: AuthRequest, res) => {
   try {
-    const db = await getDb()
-    let r
+    const pool = getPool()
+    let rows: any[]
     if (req.user?.role === 'admin') {
-      r = db.exec(`SELECT r.*, u.nickname as operator_name
-        FROM rooms r LEFT JOIN users u ON r.user_id = u.id
-        ORDER BY r.updated_at DESC`)
+      [rows] = await pool.execute(
+        'SELECT r.*, u.nickname as operator_name FROM rooms r LEFT JOIN users u ON r.user_id = u.id ORDER BY r.updated_at DESC'
+      ) as any
     } else {
-      r = db.exec(`SELECT r.*, u.nickname as operator_name
-        FROM rooms r LEFT JOIN users u ON r.user_id = u.id
-        WHERE r.user_id = ? ORDER BY r.updated_at DESC`, [req.user!.id])
+      [rows] = await pool.execute(
+        'SELECT r.*, u.nickname as operator_name FROM rooms r LEFT JOIN users u ON r.user_id = u.id WHERE r.user_id = ? ORDER BY r.updated_at DESC',
+        [req.user!.id]
+      ) as any
     }
-    if (r.length === 0) return res.json([])
-    const rooms = r[0].values.map((row: any) => ({
-      id: row[0], room_id: row[1], name: row[2], user_id: row[3],
-      status: row[4], status_message: row[5], last_seen: row[6],
-      created_at: row[7], updated_at: row[8],
-      operator_name: row[9] || '',
-    }))
-    res.json(rooms)
+    res.json(rows)
   } catch (e: any) { res.status(500).json({ error: e.message }) }
 })
 
-// POST /api/rooms
 router.post('/', adminOnly, async (req: AuthRequest, res) => {
   try {
     const { room_id, name, user_id } = req.body
     if (!room_id) return res.status(400).json({ error: '请输入直播间ID' })
-    const db = await getDb()
-    db.run('INSERT INTO rooms (room_id, name, user_id) VALUES (?, ?, ?)', [room_id, name || '', user_id || null])
-    // 自动创建关联的人设和 AI 设置
-    const r = db.exec('SELECT id FROM rooms WHERE room_id = ?', [room_id])
-    const roomDbId = r[0].values[0][0]
-    db.run('INSERT INTO personas (room_id) VALUES (?)', [roomDbId])
-    db.run('INSERT INTO ai_settings (room_id) VALUES (?)', [roomDbId])
-    saveDb()
+    const pool = getPool()
+    const [result] = await pool.execute('INSERT INTO rooms (room_id, name, user_id) VALUES (?, ?, ?)',
+      [room_id, name || '', user_id || null]) as any
+    const roomDbId = result.insertId
+    await pool.execute('INSERT IGNORE INTO personas (room_id) VALUES (?)', [roomDbId])
+    await pool.execute('INSERT IGNORE INTO ai_settings (room_id) VALUES (?)', [roomDbId])
     res.json({ success: true, id: roomDbId })
-  } catch (e: any) { res.status(500).json({ error: e.message }) }
+  } catch (e: any) {
+    if (e.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: '直播间ID已存在' })
+    res.status(500).json({ error: e.message })
+  }
 })
 
-// PUT /api/rooms/:id
 router.put('/:id', adminOnly, async (req: AuthRequest, res) => {
   try {
     const { name, user_id, room_id } = req.body
-    const db = await getDb()
-    db.run('UPDATE rooms SET name=?, user_id=?, room_id=?, updated_at=datetime(\'now\') WHERE id=?',
+    const pool = getPool()
+    await pool.execute('UPDATE rooms SET name=?, user_id=?, room_id=? WHERE id=?',
       [name || '', user_id || null, room_id, req.params.id])
-    saveDb()
     res.json({ success: true })
   } catch (e: any) { res.status(500).json({ error: e.message }) }
 })
 
-// DELETE /api/rooms/:id
 router.delete('/:id', adminOnly, async (req: AuthRequest, res) => {
   try {
-    const db = await getDb()
-    db.run('DELETE FROM ai_settings WHERE room_id=?', [req.params.id])
-    db.run('DELETE FROM personas WHERE room_id=?', [req.params.id])
-    db.run('DELETE FROM rooms WHERE id=?', [req.params.id])
-    saveDb()
+    const pool = getPool()
+    await pool.execute('DELETE FROM ai_settings WHERE room_id=?', [req.params.id])
+    await pool.execute('DELETE FROM personas WHERE room_id=?', [req.params.id])
+    await pool.execute('DELETE FROM rooms WHERE id=?', [req.params.id])
     res.json({ success: true })
   } catch (e: any) { res.status(500).json({ error: e.message }) }
 })
 
-// GET /api/rooms/:id/persona
 router.get('/:id/persona', async (req: AuthRequest, res) => {
   try {
-    const db = await getDb()
-    const r = db.exec('SELECT * FROM personas WHERE room_id = ?', [req.params.id])
-    if (r.length === 0 || r[0].values.length === 0) return res.json(null)
-    const row = r[0].values[0]
-    res.json({
-      id: row[0], room_id: row[1], name: row[2],
-      personality: JSON.parse(row[3] as string || '[]'),
-      style: row[4], tone: row[5],
-      catchphrases: JSON.parse(row[6] as string || '[]'),
-      forbidden_topics: JSON.parse(row[7] as string || '[]'),
-      fan_title: row[8], background: row[9],
-      strengths: JSON.parse(row[10] as string || '[]'),
-      greeting_phrase: row[11], sign_off: row[12], custom_prompt: row[13],
-    })
+    const pool = getPool()
+    const [rows] = await pool.execute('SELECT * FROM personas WHERE room_id = ?', [req.params.id]) as any
+    if (rows.length === 0) return res.json(null)
+    const row = rows[0]
+    res.json(mapPersona(row))
   } catch (e: any) { res.status(500).json({ error: e.message }) }
 })
 
-// PUT /api/rooms/:id/persona
 router.put('/:id/persona', async (req: AuthRequest, res) => {
   try {
-    const db = await getDb()
+    const pool = getPool()
     const p = req.body
-    db.run(`UPDATE personas SET name=?, personality=?, style=?, tone=?, catchphrases=?,
-      forbidden_topics=?, fan_title=?, background=?, strengths=?, greeting_phrase=?,
-      sign_off=?, custom_prompt=?, updated_at=datetime('now') WHERE room_id=?`,
+    await pool.execute(
+      'UPDATE personas SET name=?, personality=?, style=?, tone=?, catchphrases=?, forbidden_topics=?, fan_title=?, background=?, strengths=?, greeting_phrase=?, sign_off=?, custom_prompt=? WHERE room_id=?',
       [p.name || '默认人设', JSON.stringify(p.personality || []), p.style || '', p.tone || '',
        JSON.stringify(p.catchphrases || []), JSON.stringify(p.forbidden_topics || []),
        p.fan_title || '', p.background || '', JSON.stringify(p.strengths || []),
        p.greeting_phrase || '', p.sign_off || '', p.custom_prompt || '', req.params.id])
-    saveDb()
     res.json({ success: true })
   } catch (e: any) { res.status(500).json({ error: e.message }) }
 })
 
-// GET /api/rooms/:id/ai-settings
 router.get('/:id/ai-settings', async (req: AuthRequest, res) => {
   try {
-    const db = await getDb()
-    const r = db.exec('SELECT * FROM ai_settings WHERE room_id = ?', [req.params.id])
-    if (r.length === 0 || r[0].values.length === 0) return res.json(null)
-    const row = r[0].values[0]
+    const pool = getPool()
+    const [rows] = await pool.execute('SELECT * FROM ai_settings WHERE room_id = ?', [req.params.id]) as any
+    if (rows.length === 0) return res.json(null)
+    const row = rows[0]
     res.json({
-      id: row[0], room_id: row[1], deepseek_api_key: row[2], model: row[3],
-      enabled: !!row[4], reply_length: row[5], tone_style: row[6],
-      topic_depth: row[7], custom_prompt: row[8],
+      id: row.id, room_id: row.room_id, deepseek_api_key: row.deepseek_api_key, model: row.model,
+      enabled: !!row.enabled, reply_length: row.reply_length, tone_style: row.tone_style,
+      topic_depth: row.topic_depth, custom_prompt: row.custom_prompt,
     })
   } catch (e: any) { res.status(500).json({ error: e.message }) }
 })
 
-// PUT /api/rooms/:id/ai-settings
 router.put('/:id/ai-settings', async (req: AuthRequest, res) => {
   try {
-    const db = await getDb()
+    const pool = getPool()
     const s = req.body
-    db.run(`UPDATE ai_settings SET deepseek_api_key=?, model=?, enabled=?, reply_length=?,
-      tone_style=?, topic_depth=?, custom_prompt=?, updated_at=datetime('now') WHERE room_id=?`,
+    await pool.execute(
+      'UPDATE ai_settings SET deepseek_api_key=?, model=?, enabled=?, reply_length=?, tone_style=?, topic_depth=?, custom_prompt=? WHERE room_id=?',
       [s.deepseek_api_key || '', s.model || 'deepseek-chat', s.enabled ? 1 : 0,
        s.reply_length || 'medium', s.tone_style || 'natural', s.topic_depth || 'normal',
        s.custom_prompt || '', req.params.id])
-    saveDb()
     res.json({ success: true })
   } catch (e: any) { res.status(500).json({ error: e.message }) }
 })
 
-// POST /api/rooms/heartbeat - 桌面端上报状态
 router.post('/heartbeat', async (req, res) => {
   try {
     const { room_id, status, status_message } = req.body
     if (!room_id) return res.status(400).json({ error: '缺少 room_id' })
-    const db = await getDb()
-    db.run("UPDATE rooms SET status=?, status_message=?, last_seen=datetime('now'), updated_at=datetime('now') WHERE room_id=?",
+    const pool = getPool()
+    await pool.execute("UPDATE rooms SET status=?, status_message=?, last_seen=NOW() WHERE room_id=?",
       [status || 'online', status_message || '', room_id])
-    saveDb()
-    // 返回该房间的配置
-    const r = db.exec('SELECT id FROM rooms WHERE room_id = ?', [room_id])
-    if (r.length === 0 || r[0].values.length === 0) return res.json({ configured: false })
-    const roomDbId = r[0].values[0][0]
-    const persona = db.exec('SELECT * FROM personas WHERE room_id = ?', [roomDbId])
-    const ai = db.exec('SELECT * FROM ai_settings WHERE room_id = ?', [roomDbId])
+    const [roomRows] = await pool.execute('SELECT id FROM rooms WHERE room_id = ?', [room_id]) as any
+    if (roomRows.length === 0) return res.json({ configured: false })
+    const roomDbId = roomRows[0].id
+    const [personaRows] = await pool.execute('SELECT * FROM personas WHERE room_id = ?', [roomDbId]) as any
+    const [aiRows] = await pool.execute('SELECT * FROM ai_settings WHERE room_id = ?', [roomDbId]) as any
     res.json({
       configured: true,
-      persona: persona.length > 0 ? JSON.parse(JSON.stringify(persona[0].values[0])) : null,
-      ai_settings: ai.length > 0 ? JSON.parse(JSON.stringify(ai[0].values[0])) : null,
+      persona: personaRows.length > 0 ? mapPersona(personaRows[0]) : null,
+      ai_settings: aiRows.length > 0 ? aiRows[0] : null,
     })
   } catch (e: any) { res.status(500).json({ error: e.message }) }
 })
+
+function mapPersona(row: any) {
+  return {
+    id: row.id, room_id: row.room_id, name: row.name,
+    personality: typeof row.personality === 'string' ? JSON.parse(row.personality) : (row.personality || []),
+    style: row.style, tone: row.tone,
+    catchphrases: typeof row.catchphrases === 'string' ? JSON.parse(row.catchphrases) : (row.catchphrases || []),
+    forbidden_topics: typeof row.forbidden_topics === 'string' ? JSON.parse(row.forbidden_topics) : (row.forbidden_topics || []),
+    fan_title: row.fan_title, background: row.background,
+    strengths: typeof row.strengths === 'string' ? JSON.parse(row.strengths) : (row.strengths || []),
+    greeting_phrase: row.greeting_phrase, sign_off: row.sign_off, custom_prompt: row.custom_prompt,
+  }
+}
 
 export default router
