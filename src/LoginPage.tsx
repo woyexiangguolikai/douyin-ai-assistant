@@ -75,7 +75,7 @@ export default function LoginPage({ onLogin }: Props) {
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: '12px'
               }}
-              placeholder="http://localhost:3001" />
+              placeholder="http://your-server-ip:8080" />
           </div>
 
           <div className="mb-3">

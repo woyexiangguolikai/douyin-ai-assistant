@@ -12,7 +12,7 @@ let store: Store
 
 let roomContext = { currentTopic: '', atmosphere: 'normal', activeUsers: 0 }
 let apiToken: string | null = null
-let apiBaseUrl = 'http://localhost:3001'
+let apiBaseUrl = 'http://localhost:8080'
 let heartbeatInterval: NodeJS.Timeout | null = null
 let pendingDanmaku: any[] = []
 
